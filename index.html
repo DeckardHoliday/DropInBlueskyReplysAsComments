@@ -1,0 +1,225 @@
+<div>
+    
+    <style>
+        
+        #bsky-comments {
+            max-width: 600px;
+            margin: 0 auto;
+            color: #111;
+        }
+
+        .comment_container {
+            margin-top: 16px;
+        }
+
+        .comment_card {
+            padding: 12px;
+            border: 1px solid #e1e8ed;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .author_avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background-color: #eee;
+        }
+
+        .author_info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .author_display_name {
+            font-weight: bold;
+            font-size: 15px;
+        }
+
+        .author_handle {
+            color: #536471;
+            font-size: 13px;
+        }
+
+        .comment_text {
+            font-size: 15px;
+            line-height: 1.4;
+            margin: 8px 0;
+            white-space: pre-wrap;
+        }
+
+        .comment_footer {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: #536471;
+            margin-top: 8px;
+        }
+
+        .reply_container {
+            margin-left: 20px;
+            border-left: 2px solid #e1e8ed;
+            padding-left: 12px;
+        }
+
+        .created_at {
+            margin-left: auto;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+    </style>
+
+    <!-- THE ACTUAL CONTAINER COMMENTS ARE ADDED INTO -->
+    <div id="bsky-comments" class="comment_thread_container"></div>
+    
+    <script>
+
+        // Forces all text content to appear as text content and not vaplid html (no xss issues)
+        const escape = (str) => {
+            
+            if (!str) return;
+
+            const p_el = document.createElement("p")
+            
+            p_el.textContent = str;
+
+            return p_el.innerHTML
+
+        }
+
+        // This isn't super necessary looking back, but I copy pasted this formatting code from my project to save time developing...
+        const format_bluesky_comments = (replies) => {
+
+            const formatted_comments = [];
+
+            replies.forEach((reply) => {
+
+            const { post } = reply;
+            let formatted_comment = null;
+
+            const { author, record, uri, replyCount, likeCount, repostCount } = post;
+
+            formatted_comment = {
+                author: {
+                    display_name: author.displayName || author.handle,
+                    avatar: author.avatar || '',
+                    handle: author.handle,
+                },
+                comment_text: record.text || '',
+                created_at: record.createdAt ? new Date(record.createdAt).toDateString() : '',
+                uri: uri,
+                reply_count: replyCount || 0,
+                like_count: likeCount || 0,
+                share_count: repostCount || 0,
+            }
+
+            // This recursive call grabs any threaded replies
+            if (reply.replies && reply.replies.length > 0) {
+
+                formatted_comment.replies = format_bluesky_comments(reply.replies);
+
+            }
+
+            formatted_comments.push(formatted_comment)
+
+            })
+
+            return formatted_comments;
+
+        }
+        
+
+        // You can edit the HTML here to whatever you like!
+        // Use classes so you can style via your css sheet instead of hard coding styles!
+        const get_bsky_comment_html = (comment) => {
+
+            let replies_html = "";
+
+            if ( comment.replies && comment.replies.length > 0 ) {
+                replies_html += (`
+                <div class="reply_container">
+                    ${comment.replies.map((reply) => get_bsky_comment_html(reply)).join('')}
+                </div>
+                `)
+            }
+
+            return `
+                    <div class="comment_container">
+                        <div class="comment_card">
+                            <div class="header">
+                                <img class="author_avatar" src="${comment.author.avatar}" alt="${escape(comment.author.display_name)}" />
+                                <div class="author_info">
+                                    <span class="author_display_name">${escape(comment.author.display_name)}</span>
+                                    <span class="author_handle">@${escape(comment.author.handle)}</span>
+                                </div>
+                            </div>
+
+                            <div class="comment_text">${escape(comment.comment_text)}</div>
+
+                            <div class="comment_footer">
+                                <span class="like_count">Likes: ${comment.like_count}</span>
+                                <span class="share_count">Reposts: ${comment.share_count}</span>
+                                <time class="created_at">${comment.created_at}</time>
+                            </div>
+                        </div>
+                        ${replies_html}
+                    </div>
+                `;
+
+
+        }
+
+        const fetch_and_insert_bluesky_comments = async () => {
+
+        // The post you want to fetch replies from
+        const bsky_post_url = "";
+        // View your DID at at-proto-browser.vercel.app
+        const bsky_author_did="";
+
+        if (!bsky_post_url || !bsky_author_did ) return;
+        
+        const url_obj = new URL(bsky_post_url)
+        const post_id = url_obj.pathname.split('/').filter(Boolean).pop();
+        const blueky_api_url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=at://${bsky_author_did}/app.bsky.feed.post/${post_id}`;
+        
+        const data = await fetch(blueky_api_url).then((res)=>res.json())
+
+        // Extra logic here filters out replies that have no post data, just in case.
+        const replies = data.thread?.replies ? data.thread.replies.filter((reply) => reply.post) : [];
+
+        // Added another fallback to empty array if something went wrong above
+        const formatted_replies = format_bluesky_comments(replies ?? [])
+
+
+        // INSERT LOGIC
+        const container_class = document.getElementById('bsky-comments');
+
+        if ( container_class ) {
+
+            container_class.innerHTML = formatted_replies.map((reply) => get_bsky_comment_html(reply)).join('');
+
+        }
+
+        }
+
+
+        // INITIALIZATION
+        if (document.readyState === 'loading') {
+
+                document.addEventListener('DOMContentLoaded', fetch_and_insert_bluesky_comments);
+
+        } else {
+
+            fetch_and_insert_bluesky_comments();
+            
+        }
+
+    </script>
+</div>
