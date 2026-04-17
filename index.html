@@ -83,6 +83,11 @@
     
     <script>
 
+        // The post you want to fetch replies from
+        const BLUESKY_POST_URL = "";
+        // View your DID at at-proto-browser.vercel.app
+        const BLUESKY_AUTHOR_DID = "";
+
         // Forces all text content to appear as text content and not vaplid html (no xss issues)
         const escape = (str) => {
             
@@ -179,16 +184,11 @@
 
         const fetch_and_insert_bluesky_comments = async () => {
 
-        // The post you want to fetch replies from
-        const bsky_post_url = "";
-        // View your DID at at-proto-browser.vercel.app
-        const bsky_author_did="";
-
-        if (!bsky_post_url || !bsky_author_did ) return;
+        if (!BLUESKY_POST_URL || !BLUESKY_AUTHOR_DID ) return;
         
-        const url_obj = new URL(bsky_post_url)
+        const url_obj = new URL(BLUESKY_POST_URL)
         const post_id = url_obj.pathname.split('/').filter(Boolean).pop();
-        const blueky_api_url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=at://${bsky_author_did}/app.bsky.feed.post/${post_id}`;
+        const blueky_api_url = `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=at://${BLUESKY_AUTHOR_DID}/app.bsky.feed.post/${post_id}`;
         
         const data = await fetch(blueky_api_url).then((res)=>res.json())
 
