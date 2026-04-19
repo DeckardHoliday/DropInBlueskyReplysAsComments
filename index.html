@@ -3,6 +3,10 @@
     <!-- Basic styles. Feel free to modify here, or use your own stylesheet -->
     <!-- If you use your own stylesheet, delete these styles so they don't override your work! -->
     <style>
+
+        .join_the_conversation{
+            color: #111;
+        }
         
         #bsky-comments {
             max-width: 600px;
@@ -146,7 +150,7 @@
         // You can edit the HTML here to whatever you like!
         const get_bsky_comment_html = (comment) => {
 
-            let replies_html = "";
+            let replies_html = ``;
 
             if ( comment.replies && comment.replies.length > 0 ) {
                 replies_html += (`
@@ -204,7 +208,8 @@
 
         if ( container_class ) {
 
-            container_class.innerHTML = formatted_replies.map((reply) => get_bsky_comment_html(reply)).join('');
+            container_class.innerHTML = `<a href="${BLUESKY_POST_URL}" target="_blank" class='join_the_conversation'>Join the conversation on Bluesky</a>`;
+            container_class.innerHTML += formatted_replies.map((reply) => get_bsky_comment_html(reply)).join('');
 
         }
 
